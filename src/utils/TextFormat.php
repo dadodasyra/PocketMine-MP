@@ -308,11 +308,11 @@ abstract class TextFormat{
 					++$tokens;
 					break;
 				case self::MATERIAL_QUARTZ:
-					$newString .= "<span style=\"color:#EACACA\">";
+					$newString .= "<span style=\"color:#E3D4D1\">";
 					++$tokens;
 					break;
 				case self::MATERIAL_IRON:
-					$newString .= "<span style=\"color:#CECAC8\">";
+					$newString .= "<span style=\"color:#CECACA\">";
 					++$tokens;
 					break;
 				case self::MATERIAL_NETHERITE:
@@ -320,7 +320,7 @@ abstract class TextFormat{
 					++$tokens;
 					break;
 				case self::MATERIAL_REDSTONE:
-					$newString .= "<span style=\"color:#967107\">";
+					$newString .= "<span style=\"color:#971607\">";
 					++$tokens;
 					break;
 				case self::MATERIAL_COPPER:
@@ -344,7 +344,7 @@ abstract class TextFormat{
 					++$tokens;
 					break;
 				case self::MATERIAL_AMETHYST:
-					$newString .= "<span style=\"color:#9A5C6C\">";
+					$newString .= "<span style=\"color:#9A5CC6\">";
 					++$tokens;
 					break;
 				case self::MATERIAL_RESIN:
