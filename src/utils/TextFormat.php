@@ -46,23 +46,34 @@ abstract class TextFormat{
 	public const ESCAPE = "\xc2\xa7"; //§
 	public const EOL = "\n";
 
-	public const BLACK = TextFormat::ESCAPE . "0";
-	public const DARK_BLUE = TextFormat::ESCAPE . "1";
-	public const DARK_GREEN = TextFormat::ESCAPE . "2";
-	public const DARK_AQUA = TextFormat::ESCAPE . "3";
-	public const DARK_RED = TextFormat::ESCAPE . "4";
-	public const DARK_PURPLE = TextFormat::ESCAPE . "5";
-	public const GOLD = TextFormat::ESCAPE . "6";
-	public const GRAY = TextFormat::ESCAPE . "7";
-	public const DARK_GRAY = TextFormat::ESCAPE . "8";
-	public const BLUE = TextFormat::ESCAPE . "9";
-	public const GREEN = TextFormat::ESCAPE . "a";
-	public const AQUA = TextFormat::ESCAPE . "b";
-	public const RED = TextFormat::ESCAPE . "c";
-	public const LIGHT_PURPLE = TextFormat::ESCAPE . "d";
-	public const YELLOW = TextFormat::ESCAPE . "e";
-	public const WHITE = TextFormat::ESCAPE . "f";
-	public const MINECOIN_GOLD = TextFormat::ESCAPE . "g";
+	public const BLACK = self::ESCAPE . "0";
+	public const DARK_BLUE = self::ESCAPE . "1";
+	public const DARK_GREEN = self::ESCAPE . "2";
+	public const DARK_AQUA = self::ESCAPE . "3";
+	public const DARK_RED = self::ESCAPE . "4";
+	public const DARK_PURPLE = self::ESCAPE . "5";
+	public const GOLD = self::ESCAPE . "6";
+	public const GRAY = self::ESCAPE . "7";
+	public const DARK_GRAY = self::ESCAPE . "8";
+	public const BLUE = self::ESCAPE . "9";
+	public const GREEN = self::ESCAPE . "a";
+	public const AQUA = self::ESCAPE . "b";
+	public const RED = self::ESCAPE . "c";
+	public const LIGHT_PURPLE = self::ESCAPE . "d";
+	public const YELLOW = self::ESCAPE . "e";
+	public const WHITE = self::ESCAPE . "f";
+	public const MINECOIN_GOLD = self::ESCAPE . "g";
+	public const MATERIAL_QUARTZ = self::ESCAPE . "h";
+	public const MATERIAL_IRON = self::ESCAPE . "i";
+	public const MATERIAL_NETHERITE = self::ESCAPE . "j";
+	public const MATERIAL_REDSTONE = self::ESCAPE . "m";
+	public const MATERIAL_COPPER = self::ESCAPE . "n";
+	public const MATERIAL_GOLD = self::ESCAPE . "o";
+	public const MATERIAL_EMERALD = self::ESCAPE . "p";
+	public const MATERIAL_DIAMOND = self::ESCAPE . "q";
+	public const MATERIAL_LAPIS = self::ESCAPE . "t";
+	public const MATERIAL_AMETHYST = self::ESCAPE . "u";
+	public const MATERIAL_RESIN = self::ESCAPE . "v";
 
 	public const COLORS = [
 		self::BLACK => self::BLACK,
@@ -82,13 +93,24 @@ abstract class TextFormat{
 		self::YELLOW => self::YELLOW,
 		self::WHITE => self::WHITE,
 		self::MINECOIN_GOLD => self::MINECOIN_GOLD,
+		self::MATERIAL_QUARTZ => self::MATERIAL_QUARTZ,
+		self::MATERIAL_IRON => self::MATERIAL_IRON,
+		self::MATERIAL_NETHERITE => self::MATERIAL_NETHERITE,
+		self::MATERIAL_REDSTONE => self::MATERIAL_REDSTONE,
+		self::MATERIAL_COPPER => self::MATERIAL_COPPER,
+		self::MATERIAL_GOLD => self::MATERIAL_GOLD,
+		self::MATERIAL_EMERALD => self::MATERIAL_EMERALD,
+		self::MATERIAL_DIAMOND => self::MATERIAL_DIAMOND,
+		self::MATERIAL_LAPIS => self::MATERIAL_LAPIS,
+		self::MATERIAL_AMETHYST => self::MATERIAL_AMETHYST,
+		self::MATERIAL_RESIN => self::MATERIAL_RESIN,
 	];
 
-	public const OBFUSCATED = TextFormat::ESCAPE . "k";
-	public const BOLD = TextFormat::ESCAPE . "l";
-	public const STRIKETHROUGH = TextFormat::ESCAPE . "m";
-	public const UNDERLINE = TextFormat::ESCAPE . "n";
-	public const ITALIC = TextFormat::ESCAPE . "o";
+	public const OBFUSCATED = self::ESCAPE . "k";
+	public const BOLD = self::ESCAPE . "l";
+	public const STRIKETHROUGH = self::ESCAPE . "m";
+	public const UNDERLINE = self::ESCAPE . "n";
+	public const ITALIC = self::ESCAPE . "o";
 
 	public const FORMATS = [
 		self::OBFUSCATED => self::OBFUSCATED,
@@ -98,7 +120,7 @@ abstract class TextFormat{
 		self::ITALIC => self::ITALIC,
 	];
 
-	public const RESET = TextFormat::ESCAPE . "r";
+	public const RESET = self::ESCAPE . "r";
 
 	private static function makePcreError() : \InvalidArgumentException{
 		$errorCode = preg_last_error();
@@ -130,7 +152,7 @@ abstract class TextFormat{
 	 * @return string[]
 	 */
 	public static function tokenize(string $string) : array{
-		$result = preg_split("/(" . TextFormat::ESCAPE . "[0-9a-gk-or])/u", $string, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
+		$result = preg_split("/(" . self::ESCAPE . "[0-9a-gk-or])/u", $string, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
 		if($result === false) throw self::makePcreError();
 		return $result;
 	}
@@ -144,7 +166,7 @@ abstract class TextFormat{
 		$string = mb_scrub($string, 'UTF-8');
 		$string = self::preg_replace("/[\x{E000}-\x{F8FF}]/u", "", $string); //remove unicode private-use-area characters (they might break the console)
 		if($removeFormat){
-			$string = str_replace(TextFormat::ESCAPE, "", self::preg_replace("/" . TextFormat::ESCAPE . "[0-9a-gk-or]/u", "", $string));
+			$string = str_replace(self::ESCAPE, "", self::preg_replace("/" . self::ESCAPE . "[0-9a-gk-or]/u", "", $string));
 		}
 		return str_replace("\x1b", "", self::preg_replace("/\x1b[\\(\\][[0-9;\\[\\(]+[Bm]/u", "", $string));
 	}
@@ -155,7 +177,7 @@ abstract class TextFormat{
 	 * @param string $placeholder default "&"
 	 */
 	public static function colorize(string $string, string $placeholder = "&") : string{
-		return self::preg_replace('/' . preg_quote($placeholder, "/") . '([0-9a-gk-or])/u', TextFormat::ESCAPE . '$1', $string);
+		return self::preg_replace('/' . preg_quote($placeholder, "/") . '([0-9a-gk-or])/u', self::ESCAPE . '$1', $string);
 	}
 
 	/**
@@ -180,7 +202,7 @@ abstract class TextFormat{
 		}
 		$baseFormat = self::RESET . $baseFormat;
 
-		return $baseFormat . str_replace(TextFormat::RESET, $baseFormat, $string);
+		return $baseFormat . str_replace(self::RESET, $baseFormat, $string);
 	}
 
 	/**
@@ -191,98 +213,142 @@ abstract class TextFormat{
 		$tokens = 0;
 		foreach(self::tokenize($string) as $token){
 			switch($token){
-				case TextFormat::BOLD:
+				case self::BOLD:
 					$newString .= "<span style=font-weight:bold>";
 					++$tokens;
 					break;
-				case TextFormat::OBFUSCATED:
+				case self::OBFUSCATED:
 					//$newString .= "<span style=text-decoration:line-through>";
 					//++$tokens;
 					break;
-				case TextFormat::ITALIC:
+				case self::ITALIC:
 					$newString .= "<span style=font-style:italic>";
 					++$tokens;
 					break;
-				case TextFormat::UNDERLINE:
+				case self::UNDERLINE:
 					$newString .= "<span style=text-decoration:underline>";
 					++$tokens;
 					break;
-				case TextFormat::STRIKETHROUGH:
+				case self::STRIKETHROUGH:
 					$newString .= "<span style=text-decoration:line-through>";
 					++$tokens;
 					break;
-				case TextFormat::RESET:
+				case self::RESET:
 					$newString .= str_repeat("</span>", $tokens);
 					$tokens = 0;
 					break;
 
 				//Colors
-				case TextFormat::BLACK:
+				case self::BLACK:
 					$newString .= "<span style=color:#000>";
 					++$tokens;
 					break;
-				case TextFormat::DARK_BLUE:
+				case self::DARK_BLUE:
 					$newString .= "<span style=color:#00A>";
 					++$tokens;
 					break;
-				case TextFormat::DARK_GREEN:
+				case self::DARK_GREEN:
 					$newString .= "<span style=color:#0A0>";
 					++$tokens;
 					break;
-				case TextFormat::DARK_AQUA:
+				case self::DARK_AQUA:
 					$newString .= "<span style=color:#0AA>";
 					++$tokens;
 					break;
-				case TextFormat::DARK_RED:
+				case self::DARK_RED:
 					$newString .= "<span style=color:#A00>";
 					++$tokens;
 					break;
-				case TextFormat::DARK_PURPLE:
+				case self::DARK_PURPLE:
 					$newString .= "<span style=color:#A0A>";
 					++$tokens;
 					break;
-				case TextFormat::GOLD:
+				case self::GOLD:
 					$newString .= "<span style=color:#FA0>";
 					++$tokens;
 					break;
-				case TextFormat::GRAY:
+				case self::GRAY:
 					$newString .= "<span style=color:#AAA>";
 					++$tokens;
 					break;
-				case TextFormat::DARK_GRAY:
+				case self::DARK_GRAY:
 					$newString .= "<span style=color:#555>";
 					++$tokens;
 					break;
-				case TextFormat::BLUE:
+				case self::BLUE:
 					$newString .= "<span style=color:#55F>";
 					++$tokens;
 					break;
-				case TextFormat::GREEN:
+				case self::GREEN:
 					$newString .= "<span style=color:#5F5>";
 					++$tokens;
 					break;
-				case TextFormat::AQUA:
+				case self::AQUA:
 					$newString .= "<span style=color:#5FF>";
 					++$tokens;
 					break;
-				case TextFormat::RED:
+				case self::RED:
 					$newString .= "<span style=color:#F55>";
 					++$tokens;
 					break;
-				case TextFormat::LIGHT_PURPLE:
+				case self::LIGHT_PURPLE:
 					$newString .= "<span style=color:#F5F>";
 					++$tokens;
 					break;
-				case TextFormat::YELLOW:
+				case self::YELLOW:
 					$newString .= "<span style=color:#FF5>";
 					++$tokens;
 					break;
-				case TextFormat::WHITE:
+				case self::WHITE:
 					$newString .= "<span style=color:#FFF>";
 					++$tokens;
 					break;
-				case TextFormat::MINECOIN_GOLD:
-					$newString .= "<span style=color:#dd0>";
+				case self::MINECOIN_GOLD:
+					$newString .= "<span style=\"color:#DDD605\">";
+					++$tokens;
+					break;
+				case self::MATERIAL_QUARTZ:
+					$newString .= "<span style=\"color:#EACACA\">";
+					++$tokens;
+					break;
+				case self::MATERIAL_IRON:
+					$newString .= "<span style=\"color:#CECAC8\">";
+					++$tokens;
+					break;
+				case self::MATERIAL_NETHERITE:
+					$newString .= "<span style=\"color:#443A3B\">";
+					++$tokens;
+					break;
+				case self::MATERIAL_REDSTONE:
+					$newString .= "<span style=\"color:#967107\">";
+					++$tokens;
+					break;
+				case self::MATERIAL_COPPER:
+					$newString .= "<span style=\"color:#B4684D\">";
+					++$tokens;
+					break;
+				case self::MATERIAL_GOLD:
+					$newString .= "<span style=\"color:#DEB12D\">";
+					++$tokens;
+					break;
+				case self::MATERIAL_EMERALD:
+					$newString .= "<span style=\"color:#47A036\">";
+					++$tokens;
+					break;
+				case self::MATERIAL_DIAMOND:
+					$newString .= "<span style=\"color:#2CBAA8\">";
+					++$tokens;
+					break;
+				case self::MATERIAL_LAPIS:
+					$newString .= "<span style=\"color:#21497B\">";
+					++$tokens;
+					break;
+				case self::MATERIAL_AMETHYST:
+					$newString .= "<span style=\"color:#9A5C6C\">";
+					++$tokens;
+					break;
+				case self::MATERIAL_RESIN:
+					$newString .= "<span style=\"color:#EB7114\">";
 					++$tokens;
 					break;
 				default:
