@@ -54,6 +54,7 @@ use pocketmine\network\mcpe\protocol\types\inventory\stackresponse\ItemStackResp
 use pocketmine\network\mcpe\protocol\types\inventory\UIInventorySlotOffset;
 use pocketmine\player\Player;
 use pocketmine\utils\AssumptionFailedError;
+use pocketmine\utils\Utils;
 use function array_key_first;
 use function count;
 use function spl_object_id;
@@ -343,7 +344,7 @@ class ItemStackRequestExecutor{
 					$this->setNextCreatedItem($window->getOutput($optionId));
 				}
 			}else{
-				$this->beginCrafting($action->getRecipeId(), 1);
+				$this->beginCrafting($action->getRecipeId(), $action->getRepetitions());
 			}
 		}elseif($action instanceof CraftRecipeAutoStackRequestAction){
 			$this->beginCrafting($action->getRecipeId(), $action->getRepetitions());
@@ -370,7 +371,7 @@ class ItemStackRequestExecutor{
 	 * @throws ItemStackRequestProcessException
 	 */
 	public function generateInventoryTransaction() : InventoryTransaction{
-		foreach($this->request->getActions() as $k => $action){
+		foreach(Utils::promoteKeys($this->request->getActions()) as $k => $action){
 			try{
 				$this->processItemStackRequestAction($action);
 			}catch(ItemStackRequestProcessException $e){

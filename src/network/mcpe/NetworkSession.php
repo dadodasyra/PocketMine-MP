@@ -30,6 +30,7 @@ use pocketmine\event\server\DataPacketDecodeEvent;
 use pocketmine\event\server\DataPacketReceiveEvent;
 use pocketmine\event\server\DataPacketSendEvent;
 use pocketmine\form\Form;
+use pocketmine\item\Item;
 use pocketmine\lang\KnownTranslationFactory;
 use pocketmine\lang\Translatable;
 use pocketmine\math\Vector3;
@@ -65,6 +66,7 @@ use pocketmine\network\mcpe\protocol\Packet;
 use pocketmine\network\mcpe\protocol\PacketDecodeException;
 use pocketmine\network\mcpe\protocol\PacketPool;
 use pocketmine\network\mcpe\protocol\PlayerListPacket;
+use pocketmine\network\mcpe\protocol\PlayerStartItemCooldownPacket;
 use pocketmine\network\mcpe\protocol\PlayStatusPacket;
 use pocketmine\network\mcpe\protocol\ProtocolInfo;
 use pocketmine\network\mcpe\protocol\serializer\PacketBatch;
@@ -111,10 +113,11 @@ use pocketmine\utils\BinaryDataException;
 use pocketmine\utils\BinaryStream;
 use pocketmine\utils\ObjectSet;
 use pocketmine\utils\TextFormat;
+use pocketmine\world\format\io\GlobalItemDataHandlers;
 use pocketmine\world\Position;
+use pocketmine\world\World;
 use pocketmine\YmlServerProperties;
 use function array_map;
-use function array_values;
 use function base64_encode;
 use function bin2hex;
 use function count;
@@ -160,7 +163,10 @@ class NetworkSession{
 
 	private ?EncryptionContext $cipher = null;
 
-	/** @var string[] */
+	/**
+	 * @var string[]
+	 * @phpstan-var list<string>
+	 */
 	private array $sendBuffer = [];
 	/**
 	 * @var PromiseResolver[]
@@ -540,6 +546,7 @@ class NetworkSession{
 	 * @phpstan-return Promise<true>
 	 */
 	public function sendDataPacketWithReceipt(ClientboundPacket $packet, bool $immediate = false) : Promise{
+		/** @phpstan-var PromiseResolver<true> $resolver */
 		$resolver = new PromiseResolver();
 
 		if(!$this->sendDataPacketInternal($packet, $immediate, $resolver)){
@@ -787,7 +794,7 @@ class NetworkSession{
 	public function transfer(string $ip, int $port, Translatable|string|null $reason = null) : void{
 		$reason ??= KnownTranslationFactory::pocketmine_disconnect_transfer();
 		$this->tryDisconnect(function() use ($ip, $port, $reason) : void{
-			$this->sendDataPacket(TransferPacket::create($ip, $port), true);
+			$this->sendDataPacket(TransferPacket::create($ip, $port, false), true);
 			if($this->player !== null){
 				$this->player->onPostDisconnect($reason, null);
 			}
@@ -1051,8 +1058,7 @@ class NetworkSession{
 		];
 
 		$layers = [
-			//TODO: dynamic flying speed! FINALLY!!!!!!!!!!!!!!!!!
-			new AbilitiesLayer(AbilitiesLayer::LAYER_BASE, $boolAbilities, 0.05, 0.1),
+			new AbilitiesLayer(AbilitiesLayer::LAYER_BASE, $boolAbilities, $for->getFlightSpeedMultiplier(), 0.1),
 		];
 		if(!$for->hasBlockCollision()){
 			//TODO: HACK! In 1.19.80, the client starts falling in our faux spectator mode when it clips into a
@@ -1089,7 +1095,7 @@ class NetworkSession{
 
 	public function syncAvailableCommands() : void{
 		$commandData = [];
-		foreach($this->server->getCommandMap()->getCommands() as $name => $command){
+		foreach($this->server->getCommandMap()->getCommands() as $command){
 			if(isset($commandData[$command->getLabel()]) || $command->getLabel() === "help" || !$command->testPermissionSilent($this->player)){
 				continue;
 			}
@@ -1102,7 +1108,7 @@ class NetworkSession{
 					//work around a client bug which makes the original name not show when aliases are used
 					$aliases[] = $lname;
 				}
-				$aliasObj = new CommandEnum(ucfirst($command->getLabel()) . "Aliases", array_values($aliases));
+				$aliasObj = new CommandEnum(ucfirst($command->getLabel()) . "Aliases", $aliases);
 			}
 
 			$description = $command->getDescription();
@@ -1176,14 +1182,31 @@ class NetworkSession{
 	}
 
 	/**
+	 * @phpstan-param \Closure() : void $onCompletion
+	 */
+	private function sendChunkPacket(string $chunkPacket, \Closure $onCompletion, World $world) : void{
+		$world->timings->syncChunkSend->startTiming();
+		try{
+			$this->queueCompressed($chunkPacket);
+			$onCompletion();
+		}finally{
+			$world->timings->syncChunkSend->stopTiming();
+		}
+	}
+
+	/**
 	 * Instructs the networksession to start using the chunk at the given coordinates. This may occur asynchronously.
 	 * @param \Closure $onCompletion To be called when chunk sending has completed.
 	 * @phpstan-param \Closure() : void $onCompletion
 	 */
 	public function startUsingChunk(int $chunkX, int $chunkZ, \Closure $onCompletion) : void{
 		$world = $this->player->getLocation()->getWorld();
-		ChunkCache::getInstance($world, $this->compressor)->request($chunkX, $chunkZ)->onResolve(
-
+		$promiseOrPacket = ChunkCache::getInstance($world, $this->compressor)->request($chunkX, $chunkZ);
+		if(is_string($promiseOrPacket)){
+			$this->sendChunkPacket($promiseOrPacket, $onCompletion, $world);
+			return;
+		}
+		$promiseOrPacket->onResolve(
 			//this callback may be called synchronously or asynchronously, depending on whether the promise is resolved yet
 			function(CompressBatchPromise $promise) use ($world, $onCompletion, $chunkX, $chunkZ) : void{
 				if(!$this->isConnected()){
@@ -1201,13 +1224,7 @@ class NetworkSession{
 					//to NEEDED if they want to be resent.
 					return;
 				}
-				$world->timings->syncChunkSend->startTiming();
-				try{
-					$this->queueCompressed($promise);
-					$onCompletion();
-				}finally{
-					$world->timings->syncChunkSend->stopTiming();
-				}
+				$this->sendChunkPacket($promise->getResult(), $onCompletion, $world);
 			}
 		);
 	}
@@ -1287,6 +1304,13 @@ class NetworkSession{
 
 	public function onOpenSignEditor(Vector3 $signPosition, bool $frontSide) : void{
 		$this->sendDataPacket(OpenSignPacket::create(BlockPosition::fromVector3($signPosition), $frontSide));
+	}
+
+	public function onItemCooldownChanged(Item $item, int $ticks) : void{
+		$this->sendDataPacket(PlayerStartItemCooldownPacket::create(
+			GlobalItemDataHandlers::getSerializer()->serializeType($item)->getName(),
+			$ticks
+		));
 	}
 
 	public function tick() : void{
