@@ -296,9 +296,9 @@ class ParserPacketHandler extends PacketHandler{
 			return self::objectToOrderedArray($this->creativeItemEntryToJson($entry));
 		}, $packet->getItems());
 		file_put_contents($this->bedrockDataPath . '/creativeitems.json', json_encode([
-				'groups' => $groups,
-				'items' => $items,
-			], JSON_PRETTY_PRINT) . "\n");
+			'groups' => $groups,
+			'items' => $items,
+		], JSON_PRETTY_PRINT) . "\n");
 		return true;
 	}
 
